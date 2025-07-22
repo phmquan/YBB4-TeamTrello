@@ -47,11 +47,32 @@ GROUP BY m.product_id, m.product_name
 ORDER BY total_purchased DESC;
 
 -- 5. Which item was the most popular for each customer?
-SELECT s.product_id, COUNT(*)
-FROM sales as s
-GROUP BY s.product_id
+
+SELECT customer_id, product_id, total
+FROM (
+  SELECT s.customer_id,s.product_id, COUNT(*) as total,
+    ROW_NUMBER() OVER (
+      PARTITION BY s.customer_id
+      ORDER BY COUNT(*) DESC
+    ) AS rn
+  FROM sales s
+  INNER JOIN menu m ON s.product_id = m.product_id
+  GROUP BY s.customer_id, s.product_id 
+) AS first_item
+WHERE rn = 1;
 
 -- 6. Which item was purchased first by the customer after they became a member?
+(
+SELECT s.customer_id, s.order_date, ROW_NUMBER() OVER (
+      PARTITION BY s.customer_id
+      ORDER BY COUNT(*) DESC
+    ) AS rn
+FROM sales s
+INNER JOIN members mem ON s.customer_id = mem.customer_id
+WHERE s.order_date > mem.join_date
+GROUP BY s.customer_id, s.order_date 
+) AS first_item
+
 -- 7. Which item was purchased just before the customer became a member?
 -- 8. What is the total items and amount spent for each member before they became a member?
 -- 9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
